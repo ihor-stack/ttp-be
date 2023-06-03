@@ -1,0 +1,104 @@
+stages:
+  - test
+  - build
+sonarqube-check:
+  stage: test
+  image: 
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script: 
+    - sonar-scanner
+  allow_failure: true
+  only:
+    - dev # or the name of your main branch
+
+build_and_deploy:
+  image: visitingmedia/ubuntu22_nodejs18        
+  stage: build
+  variables:
+    ENV: ${VM_ENV}
+    slack_msg_header: ":x: *Build to ${CI_PROJECT_NAME} failed*"
+    SUCCESS: 0
+    TXT_BLUE: "\e[1m\e[34m"
+    TXT_CLEAR: "\e[0m"    
+  before_script:
+    - |
+      echo " "
+      eval $(ssh-agent -s)
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      ssh-keyscan $SSH_HOST-$ENV.vmeng.io >> ~/.ssh/known_hosts
+      if [[ $ENV == 'dev' ]]; then ssh-keyscan $SSH_HOST-$ENV.vmasia.net >> ~/.ssh/known_hosts; fi
+      chmod 644 ~/.ssh/known_hosts
+      echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+  cache:
+    key:
+      files:
+        - package-lock.yaml
+    paths:
+      - node_modules
+  script:
+    - |
+      echo " "
+      echo -e "$TXT_BLUE"
+      echo -e "=========================="
+      echo -e "Deploying in ${ENV} "
+      echo -e "$TXT_BLUE==========================$TXT_CLEAR"
+      echo " "      
+      npm install # install dependencies
+      npx tsc
+      rsync -atv --progress ./ $SSH_USER@$SSH_HOST-$ENV.vmeng.io:/opt/src/apps/
+      if [[ $ENV == 'dev' ]]; then rsync -atv --progress ./ $SSH_USER@$SSH_HOST-$ENV.vmasia.net:/opt/src/apps/; fi
+  after_script:
+    - |
+      echo "${CI_JOB_STATUS}"
+      if [[ "${CI_JOB_STATUS}" == "success"  ]]; then EXIT_STATUS=0; else EXIT_STATUS=2; fi      
+      if [[ "${EXIT_STATUS}" == "${SUCCESS}" ]]; then slack_msg_header="':white_check_mark:' *Build to ${CI_PROJECT_NAME} - ${ENV} succeeded*"; fi
+      tee SLACK <<EOF
+      {
+        "blocks": [
+       {
+        "type": "section",
+        "text": {
+         "type": "mrkdwn",
+         "text": "${slack_msg_header}"
+         }
+        },
+        {
+         "type": "divider"
+         },
+         {
+         "type": "section",
+         "fields": [
+           {
+            "type": "mrkdwn",
+            "text": "*Stage:*\nBuild"
+           },
+           {
+            "type": "mrkdwn",
+            "text": "*Pushed By:*\n${GITLAB_USER_NAME}"
+            }
+         ]
+         },
+          {
+           "type": "section",
+           "text": {
+          "type": "mrkdwn",
+           "text": "*Project:* ${CI_PROJECT_NAME}\n*Branch/Tag:* ${CI_COMMIT_REF_NAME}\n*Building Environment:* ${ENV}\n*Job URL:* <${CI_JOB_URL}|${CI_JOB_ID}>"
+            }
+          },
+          {
+         "type": "divider"
+           }
+       ]
+      }
+      EOF
+      curl  --silent --show-error --fail --request POST --data "@SLACK" "${SLACK_WEB_URL}"
+

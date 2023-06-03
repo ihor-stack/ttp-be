@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "src": "./assets/img/chairs/wooden-chair.png",
+    "title": "Chiavari",
+    "type": "chiavari",
+    "category": "chair",
+    "width": 15,
+    "depth": 18,
+    "height": 40
+  },
+  {
+    "id": 2,
+    "src": "./assets/img/chairs/stackable-chair.jpg",
+    "title": "Curve Back",
+    "type": "curve_back",
+    "category": "chair",
+    "width": 17.75,
+    "depth": 23.25,
+    "height": 38
+  },
+  {
+    "id": 3,
+    "src": "./assets/img/chairs/square-standard.png",
+    "title": "High Back",
+    "type": "high_back",
+    "category": "chair",
+    "width": 21.25,
+    "depth": 22.5,
+    "height": 40
+  }
+]

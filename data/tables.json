@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "src": "./assets/img/tables/round-table-linenless.png",
+    "title": "Round",
+    "category": "table",
+    "type": "round",
+    "width": 72,
+    "length": 72,
+    "height": 29
+  },
+  {
+    "id": 2,
+    "src": "./assets/img/tables/square-table-thin.png",
+    "title": "Rectangular",
+    "category": "table",
+    "type": "rectangular",
+    "width": 18,
+    "length": 72,
+    "height": 30
+  }
+]
